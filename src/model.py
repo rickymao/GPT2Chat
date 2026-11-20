@@ -111,11 +111,28 @@ class GPT2(nn.Module):
         self.wpe = nn.Embedding(context_length, n_embd)
         self.wte = nn.Embedding(vocab_size, n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+
         self.ln_f = nn.LayerNorm(n_embd)
         self.h = nn.ModuleList(
             Block(n_embd=n_embd, n_heads=n_heads, context_length=context_length)
             for _ in range(n_layers)
         )
+
+        # Weight tying
+        self.wte.weight = self.lm_head.weight
+
+        # init weights
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module: nn.Module):
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+
 
     def forward(self, x: Tensor, targets: Tensor | None=None):
 

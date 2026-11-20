@@ -4,8 +4,8 @@ import tiktoken
 import torch
 
 from dataset.shakespeare import ShakespeareData
-from scripts.dataloader import DataLoader
 from scripts.utils import get_device
+from src.dataloader import DataLoader
 from src.model import GPT2, ModelConfig
 
 
