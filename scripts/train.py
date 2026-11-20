@@ -22,6 +22,10 @@ dataset = ShakespeareData()
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
 loader = DataLoader(dataset, batch_size=4, context_length=32)
 
+
+def log(loss: float, config: Hyperparameters):
+    print
+
 def train(config: Hyperparameters):
     # training loop
     for i in range(config.steps):

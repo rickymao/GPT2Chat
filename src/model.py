@@ -10,9 +10,11 @@ from torch import Tensor, nn, softmax
 class ModelConfig:
     n_embd = 768
     n_layers = 12
+    init_std = 0.02
     n_heads = 12
     context_length = 1024
     vocab_size = 50257  # from the GPT2 paper with <|endoftext|> token
+
 
 
 class MultiHeadCausalAttention(nn.Module):
@@ -23,6 +25,7 @@ class MultiHeadCausalAttention(nn.Module):
         self.n_embd = n_embd
         self.c_attn = nn.Linear(n_embd, n_embd * 3)
         self.c_proj = nn.Linear(n_embd, n_embd)
+        self.c_proj.SCALED_INIT = 1 # type: ignore
         self.register_buffer(
             "mask", torch.tril(torch.ones((1, 1, context_length, context_length)))
         )
@@ -126,11 +129,14 @@ class GPT2(nn.Module):
 
     def _init_weights(self, module: nn.Module):
         if isinstance(module, nn.Linear):
-            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            std = self.config.init_std
+            if hasattr(module, "SCALED_INIT") == 1:
+                std = self.config.init_std / ((2 * self.n_layers)**0.5) # 2 for the 2 residual branches
+            nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
-            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            nn.init.normal_(module.weight, mean=0.0, std=self.config.init_std)
 
 
 
