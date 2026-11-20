@@ -35,3 +35,7 @@ uv run python -m scripts.inference
 ## Stack
 
 PyTorch, tiktoken (GPT-2 tokenizer), einops, transformers.
+
+## Visualization
+
+Check out a visualization of the model [here](https://claude.ai/artifact/UoxfiQAXB6ce99eNiZK1cA)
