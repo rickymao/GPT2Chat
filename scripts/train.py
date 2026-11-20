@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from time import perf_counter
 
 import tiktoken
 import torch
@@ -20,27 +21,32 @@ device = get_device()
 model = GPT2(ModelConfig()).to(device)
 dataset = ShakespeareData()
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
-loader = DataLoader(dataset, batch_size=4, context_length=32)
+loader = DataLoader(dataset, batch_size=1, context_length=1024)
+torch.set_float32_matmul_precision("high")
 
-
-def log(loss: float, config: Hyperparameters):
-    print
+def log(loss: torch.Tensor, config: Hyperparameters, start_time: float, step: int):
+    if device == 'cuda':
+        torch.cuda.synchronize()
+    tn = perf_counter()
+    tt = tn - start_time
+    toks = config.batch_size * config.context_length / tt
+    print(f"step {step} | loss {loss:.4f} | {(tt * 1000):.3f} ms | {toks:.2f} tok/s" )
 
 def train(config: Hyperparameters):
     # training loop
     for i in range(config.steps):
+        t0 = perf_counter()
         optimizer.zero_grad()
         # load dataset
         x, y = loader.next_batch()
-        x = x.to(device)
-        y = y.to(device)
-        _, loss = model.forward(x, y)
+        x, y = x.to(device), y.to(device)
+        with torch.autocast(device_type=device):
+            _, loss = model.forward(x, y)
         if not loss:
             continue
         loss.backward()
         optimizer.step()
-
-        print(f"step{i}: {loss:.3f}")
+        log(loss=loss, config=config, start_time=t0, step=i)
 
 
 train(Hyperparameters())

@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-from einops import einsum, rearrange
-from torch import Tensor, nn, softmax
+from einops import rearrange
+from torch import Tensor, nn
 
 
 @dataclass
@@ -25,11 +25,7 @@ class MultiHeadCausalAttention(nn.Module):
         self.n_embd = n_embd
         self.c_attn = nn.Linear(n_embd, n_embd * 3)
         self.c_proj = nn.Linear(n_embd, n_embd)
-        self.c_proj.SCALED_INIT = 1 # type: ignore
-        self.register_buffer(
-            "mask", torch.tril(torch.ones((1, 1, context_length, context_length)))
-        )
-        self.mask: Tensor
+        self.c_proj.SCALED_INIT = 1 # type: ignore TODO: remove
 
     def forward(self, x: Tensor):
         _, ctx, _ = x.shape
@@ -40,22 +36,9 @@ class MultiHeadCausalAttention(nn.Module):
         q = rearrange(q, " ... seq (h dim) -> ... h seq dim", h=self.n_heads)
         k = rearrange(k, " ... seq (h dim) -> ... h seq dim", h=self.n_heads)
         v = rearrange(v, " ... seq (h dim) -> ... h seq dim", h=self.n_heads)
-
-        # dot product attention
-        attn = einsum(q, k, "... seq1 dim, ... seq2 dim -> ... seq1 seq2") / (
-            q.size(-1) ** 0.5
-        )
-
-        # causal mask
-        attn = attn.masked_fill(self.mask[:, :, :ctx, :ctx] == 0, float("-inf"))
-        # softmax
-        attn = softmax(attn, dim=-1)
-        # weighted sum
-        weighted_sum = einsum(attn, v, "... seq1 seq2, ... seq2 dim -> ... seq1 dim")
-
+        attn = F.scaled_dot_product_attention(q, k, v, is_causal=True)
         # concat the head dims
-        final = rearrange(weighted_sum, "... h seq dim -> ... seq (h dim)")
-
+        final = rearrange(attn, "... h seq dim -> ... seq (h dim)")
         # map
         return self.c_proj(final)
 
@@ -67,6 +50,7 @@ class FeedForward(nn.Module):
         self.c_fc = nn.Linear(input_features, 4 * input_features)
         self.gelu = nn.GELU(approximate="tanh")  # TODO: remove approx. after
         self.c_proj = nn.Linear(4 * input_features, input_features)
+        self.c_proj.SCALED_INIT = 1 # type: ignore TODO: remove
 
     def forward(self, x: Tensor):
         x = self.c_fc(x)
