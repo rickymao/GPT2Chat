@@ -32,6 +32,12 @@ Generate text (top-k sampling, k=50):
 uv run python -m scripts.inference
 ```
 
+## Tests
+
+```bash
+uv run -m pytest
+```
+
 ## Stack
 
 PyTorch, tiktoken (GPT-2 tokenizer), einops, transformers.

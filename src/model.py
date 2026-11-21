@@ -28,7 +28,6 @@ class MultiHeadCausalAttention(nn.Module):
         self.c_proj.SCALED_INIT = 1 # type: ignore TODO: remove
 
     def forward(self, x: Tensor):
-        _, ctx, _ = x.shape
         # get the Q, K, V for each head
         qkv = self.c_attn(x)
         # split into q, k, v
