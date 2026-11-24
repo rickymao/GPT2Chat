@@ -75,9 +75,6 @@ def train(config: Hyperparameters):
         log(loss=loss, config=config, start_time=t0, step=i, grad_norm=grad_norm, lr=lr)
 
 
-train(Hyperparameters())
-
-
 
 
 
