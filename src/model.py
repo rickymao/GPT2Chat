@@ -13,7 +13,7 @@ class ModelConfig:
     init_std = 0.02
     n_heads = 12
     context_length = 1024
-    vocab_size = 50257  # from the GPT2 paper with <|endoftext|> token
+    vocab_size = 50304  # from the GPT2 paper with <|endoftext|> token
 
 
 
@@ -103,10 +103,8 @@ class GPT2(nn.Module):
             Block(n_embd=n_embd, n_heads=n_heads, context_length=context_length)
             for _ in range(n_layers)
         )
-
         # Weight tying
         self.wte.weight = self.lm_head.weight
-
         # init weights
         self.apply(self._init_weights)
 

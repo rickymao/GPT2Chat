@@ -1,31 +1,33 @@
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from time import perf_counter
 
 import torch
 
-from dataset.shakespeare import ShakespeareData
+from dataset.shakespeare_dataset import ShakespeareDataset
 from scripts.utils import get_device
 from src.dataloader import DataLoader
 from src.model import GPT2, ModelConfig
 from src.scheduler import get_cosine_annealing_lr
 
+volume_path = PurePosixPath("/data")
 
 @dataclass
 class Hyperparameters:
     steps = 50
-    batch_size = 4
-    context_length = 32
+    batch_size = 16
+    context_length = 1024
     weight_decay = 0.1
     base_lr = 6e-4
 
 device = get_device()
 
-def log(loss: torch.Tensor, config: Hyperparameters, start_time: float, step: int, grad_norm:torch.Tensor, lr: float):
+def log(loss: torch.Tensor | float, config: Hyperparameters, start_time: float, step: int, grad_acc_steps: int, grad_norm:torch.Tensor, lr: float):
     if device == 'cuda':
         torch.cuda.synchronize()
     tn = perf_counter()
     tt = tn - start_time
-    toks = config.batch_size * config.context_length / tt
+    toks = config.batch_size * config.context_length * grad_acc_steps / tt
     print(f"step {step} | lr {lr} | loss {loss:.4f} | {(tt * 1000):.3f} ms | grad_norm {grad_norm} | {toks:.2f} tok/s" )
 
 # get the param groups used for the optimizer
@@ -47,13 +49,23 @@ def get_param_groups(model: torch.nn.Module, weight_decay: float):
         { "params": no_decay, "weight_decay": 0.0 }
     ]
 
-def train(config: Hyperparameters):
+def train(config: Hyperparameters, modal: bool = False):
+    torch.manual_seed(1337)
+    if torch.cuda.is_available():
+        torch.manual_seed(1337)
     model = GPT2(ModelConfig()).to(device)
-    dataset = ShakespeareData()
-    loader = DataLoader(dataset, batch_size=1, context_length=1024)
+    model.compile()
+    dataset_path =  volume_path / "raw_data" / "shakespeare.txt" if modal else None
+    data = ShakespeareDataset(path=dataset_path)
+    loader = DataLoader(data, batch_size=config.batch_size, context_length=config.context_length)
     torch.set_float32_matmul_precision("high")
     param_groups = get_param_groups(model, config.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=config.base_lr, betas=(0.9, 0.95), eps=1e-8, fused=True)
+
+    # total batch size
+    total_batch_size = 524_288
+    grad_acc_steps = total_batch_size // (config.batch_size * config.context_length)
+    print(f"grad acc steps: {grad_acc_steps}")
 
     # training loop
     for i in range(config.steps):
@@ -62,21 +74,19 @@ def train(config: Hyperparameters):
             pg["lr"] = lr
         t0 = perf_counter()
         optimizer.zero_grad()
-        # load dataset
-        x, y = loader.next_batch()
-        x, y = x.to(device), y.to(device)
-        with torch.autocast(device_type=device):
-            _, loss = model.forward(x, y)
-        if not loss:
-            continue
-        loss.backward()
+        loss_acc = 0.0 # the loss for the big batch
+        for _ in range(grad_acc_steps):
+            # load dataset
+            x, y = loader.next_batch()
+            x, y = x.to(device), y.to(device)
+            with torch.autocast(device_type=device):
+                _, loss = model.forward(x, y)
+            if not loss:
+                continue
+            loss = loss / grad_acc_steps
+            loss.backward()
+            loss_acc += loss.detach()
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
-        log(loss=loss, config=config, start_time=t0, step=i, grad_norm=grad_norm, lr=lr)
-
-
-
-
-
-
+        log(loss=loss_acc, config=config, start_time=t0, step=i, grad_norm=grad_norm, grad_acc_steps=grad_acc_steps, lr=lr)
 

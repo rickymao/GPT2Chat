@@ -1,7 +1,7 @@
 import tiktoken
 import torch
 
-from dataset.shakespeare import Dataset
+from dataset.shakespeare_dataset import Dataset
 
 
 # Dataloader that loads data sequentially from a dataset
@@ -29,13 +29,17 @@ class DataLoader:
             + 1
         ]
         raw_data = torch.tensor(raw_data, dtype=torch.long)
-        x = raw_data[1:].view(self.batch_size, self.context_length)
-        y = raw_data[:-1].view(self.batch_size, self.context_length)
 
+        x = raw_data[:-1].view(self.batch_size, self.context_length)
+        y = raw_data[1:].view(self.batch_size, self.context_length)
+
+        # next batch start from where the last target since we don't use the last target to predict and learn
         self.dataset_idx = (
-            self.dataset_idx + self.batch_size * self.context_length + 1
+            self.dataset_idx + self.batch_size * self.context_length
         )
-        if self.dataset_idx >= len(self.tokenized_data):
+
+        # if next idx can't select enough examples go back to zero
+        if self.dataset_idx > (len(self.tokenized_data) - self.batch_size * self.context_length + 1):
             self.dataset_idx = 0
 
         return (x, y)
