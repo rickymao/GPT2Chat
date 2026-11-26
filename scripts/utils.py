@@ -2,14 +2,16 @@ import torch
 from torch.distributed import init_process_group
 import os
 
+
 def get_device():
-    device = 'cpu'
+    device = "cpu"
     if torch.cuda.is_available():
-        device = 'cuda'
+        device = "cuda"
     elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        device = 'mps'
+        device = "mps"
     print(f"Using device: {device}")
     return device
+
 
 def use_dpp():
 
@@ -32,6 +34,10 @@ def use_dpp():
         device = get_device()
         is_master = True
 
-    return { "rank": rank, "local_rank": local_rank, "world_size": world_size, "device": device, "is_master": is_master }
-
-        
+    return {
+        "rank": rank,
+        "local_rank": local_rank,
+        "world_size": world_size,
+        "device": device,
+        "is_master": is_master,
+    }
