@@ -75,6 +75,7 @@ def get_param_groups(
 
 def train(config: Hyperparameters, modal: bool = False):
     dpp = use_dpp()
+    is_dpp = dpp["is_dpp"]
     device = dpp["device"]
     rank = dpp["rank"]
     local_rank = dpp["local_rank"]
@@ -87,7 +88,7 @@ def train(config: Hyperparameters, modal: bool = False):
     model = GPT2(ModelConfig()).to(device)
     model.compile()
 
-    if dpp:
+    if is_dpp:
         model = DDP(model, device_ids=[local_rank])
 
     dataset_path = volume_path / "raw_data" / "shakespeare.txt" if modal else None
@@ -157,7 +158,7 @@ def train(config: Hyperparameters, modal: bool = False):
                 loss = loss / grad_acc_steps
                 loss.backward()
                 loss_acc += loss.detach()
-        if dpp:
+        if is_dpp:
             torch.distributed.all_reduce(loss_acc, op=torch.distributed.ReduceOp.AVG)
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
@@ -172,7 +173,7 @@ def train(config: Hyperparameters, modal: bool = False):
                 grad_acc_steps=grad_acc_steps,
                 lr=lr,
             )
-    if dpp:
+    if is_dpp:
         destroy_process_group()
 
 

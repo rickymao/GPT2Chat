@@ -33,8 +33,8 @@ def use_dpp():
         world_size = 1
         device = get_device()
         is_master = True
-
     return {
+        "is_dpp": dpp,
         "rank": rank,
         "local_rank": local_rank,
         "world_size": world_size,
