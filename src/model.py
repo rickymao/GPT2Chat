@@ -64,12 +64,12 @@ class Block(nn.Module):
         super().__init__()
         self.n_heads = n_heads
         self.n_embd = n_embd
-        self.mlp = FeedForward(n_embd)
+        self.ln_1 = nn.LayerNorm(n_embd)
         self.attn = MultiHeadCausalAttention(
             n_heads=n_heads, n_embd=n_embd, context_length=context_length
         )
-        self.ln_1 = nn.LayerNorm(n_embd)
         self.ln_2 = nn.LayerNorm(n_embd)
+        self.mlp = FeedForward(n_embd)
 
     def forward(self, x: Tensor):
 
@@ -94,15 +94,15 @@ class GPT2(nn.Module):
         n_heads = self.n_heads = config.n_heads
         vocab_size = self.vocab_size = config.vocab_size
         context_length = self.context_length = config.context_length
-        self.wpe = nn.Embedding(context_length, n_embd)
         self.wte = nn.Embedding(vocab_size, n_embd)
-        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
-
-        self.ln_f = nn.LayerNorm(n_embd)
+        self.wpe = nn.Embedding(context_length, n_embd)
         self.h = nn.ModuleList(
             Block(n_embd=n_embd, n_heads=n_heads, context_length=context_length)
             for _ in range(n_layers)
         )
+        self.ln_f = nn.LayerNorm(n_embd)
+        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+
         # Weight tying
         self.wte.weight = self.lm_head.weight
         # init weights
@@ -111,7 +111,7 @@ class GPT2(nn.Module):
     def _init_weights(self, module: nn.Module):
         if isinstance(module, nn.Linear):
             std = self.config.init_std
-            if hasattr(module, "SCALED_INIT") == 1:
+            if hasattr(module, "SCALED_INIT"):
                 std = self.config.init_std / ((2 * self.n_layers)**0.5) # 2 for the 2 residual branches
             nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.bias is not None:
