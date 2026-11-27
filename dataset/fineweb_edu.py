@@ -20,7 +20,7 @@ token_path = Path(f"dataset/{DATASET_NAME}")
 token_path.mkdir(exist_ok=True)
 
 def get_shard_path(split: str, shard_id: int):
-    return token_path / f"{DATASET_NAME}_{split}_{shard_id:.6d}.bin"
+    return token_path / f"{DATASET_NAME}_{split}_{shard_id:06d}.bin"
 
 
 def tokenize(row: dict[str, Any]):

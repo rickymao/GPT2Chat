@@ -26,8 +26,7 @@ image = (
 )
 volume = modal.Volume.from_name("gpt2chat-train", create_if_missing=True)
 volume_path = PurePosixPath("/data")
-dataset_path = volume_path / "raw_data" / "shakespeare.txt"
-NUM_GPU = 8
+NUM_GPU = 1
 gpu = f"A100:{NUM_GPU}"
 
 
@@ -36,7 +35,7 @@ def train():
     import subprocess
 
     subprocess.run(
-        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--modal"],
+        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--train-path", str(volume_path / "shakespeare" / "train.bin")],
         check=True,
         cwd="/root/project"
     )

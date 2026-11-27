@@ -1,24 +1,23 @@
-import tiktoken
-import torch
 from pathlib import Path
+import numpy as np
+import torch
+
 
 # Dataloader that loads data sequentially from a dataset
 class DataLoader:
-    def __init__(self, path: Path, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True) -> None:
+    def __init__(self, path: str | Path, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True) -> None:
         self.path = path
         self.batch_size = batch_size
         self.rank = rank
         self.world_size = world_size
         self.context_length = context_length
         self.idx = self.rank * self.context_length * self.batch_size  # track where are we in the dataset
-        tokenizer = tiktoken.encoding_for_model("gpt2")
-        # load and encode data from url
-        
-        self.tokenized_data = tokenizer.encode(self._data)
 
     def next_batch(self):
+
+        ds = np.memmap(self.path, dtype=np.uint16, mode="r")        
         # take batch_size * context_length + 1
-        raw_data = self.tokenized_data[
+        raw_data = ds[
             self.idx : self.idx
             + (self.batch_size
             * self.context_length)
@@ -35,7 +34,6 @@ class DataLoader:
         )
 
         # if next idx can't select enough examples go back to zero
-        if self.idx  > (len(self.tokenized_data) - (self.batch_size * self.context_length + 1)):
+        if self.idx  > (len(ds) - (self.batch_size * self.context_length + 1)):
             self.idx = self.rank * self.context_length * self.batch_size
-
         return (x, y)

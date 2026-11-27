@@ -8,7 +8,6 @@ import torch
 from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from dataset.shakespeare import ShakespeareDataset
 from scripts.utils import get_device, use_dpp
 from src.dataloader import DataLoader
 from src.model import GPT2, ModelConfig
@@ -26,11 +25,9 @@ class Hyperparameters:
     base_lr = 6e-4
 
 
-device = get_device()
-
-
 def log(
     loss: torch.Tensor | float,
+    device: str,
     config: Hyperparameters,
     start_time: float,
     step: int,
@@ -73,7 +70,7 @@ def get_param_groups(
     ]
 
 
-def train(config: Hyperparameters, modal: bool = False):
+def train(config: Hyperparameters, train_path: str):
     dpp = use_dpp()
     is_dpp = dpp["is_dpp"]
     device = dpp["device"]
@@ -91,11 +88,9 @@ def train(config: Hyperparameters, modal: bool = False):
     if is_dpp:
         model = DDP(model, device_ids=[local_rank])
 
-    dataset_path = volume_path / "raw_data" / "shakespeare.txt" if modal else None
-    data = ShakespeareDataset(path=dataset_path)
     torch.set_float32_matmul_precision("high")
     loader = DataLoader(
-        data,
+        path=train_path,
         batch_size=config.batch_size,
         context_length=config.context_length,
         rank=rank,
@@ -166,6 +161,7 @@ def train(config: Hyperparameters, modal: bool = False):
             log(
                 loss=loss_acc,
                 config=config,
+                device=device,
                 start_time=t0,
                 step=i,
                 world_size=world_size,
@@ -180,9 +176,9 @@ def train(config: Hyperparameters, modal: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--modal", action="store_true", help="configure training for Modal"
+        "--train-path", help="dataset path for training"
     )
     args = parser.parse_args()
-    is_modal = args.modal
+    train_path = args.train_path
 
-    train(Hyperparameters(), modal=is_modal)
+    train(Hyperparameters(), train_path=train_path)
