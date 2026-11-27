@@ -46,6 +46,10 @@ def log(
         f"step {step} | lr {lr} | loss {loss:.4f} | {(tt * 1000):.3f} ms | grad_norm {grad_norm} | {tkps:.2f} tok/s"
     )
 
+def log_val(step: int, loss: torch.Tensor):
+    msg = (5*"=") + f"| STEP {step} | loss {loss} |" + (5*"=")
+    print(msg)
+
 
 # get the param groups used for the optimizer
 def get_param_groups(
@@ -149,7 +153,7 @@ def train(config: Hyperparameters, train_dir: str):
             if dpp:
                 torch.distributed.all_reduce(loss_acc, op=torch.distributed.ReduceOp.AVG)
             if is_master:
-                print(f"STEP {i} | VALIDATION LOSS {loss_acc:.4f}")
+                log_val(step=i, loss=loss_acc)
         model.train()
         lr = get_cosine_annealing_lr(
             step=i,
