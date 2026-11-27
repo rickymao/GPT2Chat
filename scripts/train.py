@@ -89,8 +89,17 @@ def train(config: Hyperparameters, train_dir: str):
         model = DDP(model, device_ids=[local_rank])
 
     torch.set_float32_matmul_precision("high")
-    loader = DataLoader(
+    train_loader = DataLoader(
         data_dir=train_dir,
+        batch_size=config.batch_size,
+        context_length=config.context_length,
+        rank=rank,
+        world_size=world_size,
+        is_master=is_master,
+    )
+    val_loader = DataLoader(
+        data_dir=train_dir,
+        split="val",
         batch_size=config.batch_size,
         context_length=config.context_length,
         rank=rank,
@@ -123,6 +132,22 @@ def train(config: Hyperparameters, train_dir: str):
         print(f"grad acc steps: {grad_acc_steps}")
     # training loop
     for i in range(config.steps):
+
+        # validation 
+        if i % 100 == 0:
+            loss_acc = torch.zeros((), device=device)  # the loss for the big batch
+            val_acc_steps = 20
+            for _ in range(val_acc_steps):
+                x, y = val_loader.next_batch()
+                x, y = x.to(device), y.to(device)
+                with torch.autocast(device_type=device, dtype=torch.bfloat16):
+                    _, loss = model(x, y)
+                loss_acc += loss.detach()
+            if dpp:
+                torch.distributed.all_reduce(loss_acc, op=torch.distributed.ReduceOp.AVG)
+            if is_master:
+                print(f"STEP {i} | VALIDATION LOSS {loss_acc:.4f}")
+    
         lr = get_cosine_annealing_lr(
             step=i,
             warmup_it=10,
@@ -138,7 +163,7 @@ def train(config: Hyperparameters, train_dir: str):
         for j in range(grad_acc_steps):
             is_last = j == (grad_acc_steps - 1)
             # load dataset
-            x, y = loader.next_batch()
+            x, y = train_loader.next_batch()
             x, y = x.to(device), y.to(device)
 
             # set ctx to not sync grads thru DDP during acc steps until its finished acc
