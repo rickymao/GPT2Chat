@@ -8,7 +8,7 @@ import torch
 from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from scripts.utils import get_device, use_dpp
+from scripts.utils import use_dpp
 from src.dataloader import DataLoader
 from src.model import GPT2, ModelConfig
 from src.scheduler import get_cosine_annealing_lr
@@ -19,7 +19,7 @@ volume_path = PurePosixPath("/data")
 @dataclass
 class Hyperparameters:
     steps = 50
-    batch_size = 16
+    batch_size = 1
     context_length = 1024
     weight_decay = 0.1
     base_lr = 6e-4

@@ -1,12 +1,13 @@
-import os
-import multiprocessing as mp
-from tiktoken import get_encoding
-import datasets
-from typing import Any
-import numpy as np
 import argparse
+import multiprocessing as mp
+import os
 from pathlib import Path
+from typing import Any
+
+import datasets
+import numpy as np
 import tqdm
+from tiktoken import get_encoding
 
 DATASET_NAME = "fineweb_edu"
 parser = argparse.ArgumentParser()

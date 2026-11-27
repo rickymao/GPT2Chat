@@ -1,6 +1,7 @@
+import os
+
 import torch
 from torch.distributed import init_process_group
-import os
 
 
 def get_device():
