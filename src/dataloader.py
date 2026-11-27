@@ -18,8 +18,8 @@ class DataLoader:
         self.idx = self.rank * self.context_length * self.batch_size  # track where are we in the dataset
         self.data_dir = Path(data_dir)
         shards = os.listdir(self.data_dir)
-        assert len(shards) > 0
         self.shards = sorted(f for f in shards if f.endswith(".bin") and split in f)
+        assert len(self.shards) > 0
         self.curr_shard = 0
         if is_master:
             print(f"Loaded {len(shards)} data shards")
