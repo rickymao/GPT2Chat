@@ -19,7 +19,7 @@ volume_path = PurePosixPath("/data")
 @dataclass
 class Hyperparameters:
     steps = 50
-    batch_size = 16
+    batch_size = 64
     context_length = 1024
     weight_decay = 0.1
     base_lr = 6e-4
@@ -135,19 +135,22 @@ def train(config: Hyperparameters, train_dir: str):
 
         # validation 
         if i % 100 == 0:
+            model.eval()
             loss_acc = torch.zeros((), device=device)  # the loss for the big batch
             val_acc_steps = 20
-            for _ in range(val_acc_steps):
-                x, y = val_loader.next_batch()
-                x, y = x.to(device), y.to(device)
-                with torch.autocast(device_type=device, dtype=torch.bfloat16):
-                    _, loss = model(x, y)
-                loss_acc += loss.detach()
+            with torch.no_grad():
+                for _ in range(val_acc_steps):
+                    x, y = val_loader.next_batch()
+                    x, y = x.to(device), y.to(device)
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+                        _, loss = model(x, y)
+                    loss = loss / val_acc_steps
+                    loss_acc += loss.detach()
             if dpp:
                 torch.distributed.all_reduce(loss_acc, op=torch.distributed.ReduceOp.AVG)
             if is_master:
                 print(f"STEP {i} | VALIDATION LOSS {loss_acc:.4f}")
-    
+        model.train()
         lr = get_cosine_annealing_lr(
             step=i,
             warmup_it=10,

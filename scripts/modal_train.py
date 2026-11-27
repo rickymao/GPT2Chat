@@ -21,12 +21,12 @@ image = (
     .add_local_dir(
         PROJECT_DIR,
         remote_path=MODAL_PROJECT_DIR,
-        ignore=["**/.git", "**/__pycache__", "**/.venv", "**/venv", "**/*.pt"],
+        ignore=["**/.git", "**/__pycache__", "**/.venv", "**/venv", "**/*.pt", "**/*.bin"],
     )
 )
 volume = modal.Volume.from_name("gpt2chat-train", create_if_missing=True)
 volume_path = PurePosixPath("/data")
-NUM_GPU = 1
+NUM_GPU = 4
 gpu = f"A100:{NUM_GPU}"
 
 
@@ -35,7 +35,7 @@ def train():
     import subprocess
 
     subprocess.run(
-        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--train-dir", str(volume_path / "shakespeare")],
+        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--train-dir", str(volume_path / "fineweb_edu")],
         check=True,
         cwd="/root/project"
     )
