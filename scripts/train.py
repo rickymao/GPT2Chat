@@ -8,7 +8,7 @@ import torch
 from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from dataset.shakespeare_dataset import ShakespeareDataset
+from dataset.shakespeare import ShakespeareDataset
 from scripts.utils import get_device, use_dpp
 from src.dataloader import DataLoader
 from src.model import GPT2, ModelConfig

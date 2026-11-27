@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from dataset.shakespeare_dataset import ShakespeareDataset
+from dataset.shakespeare import ShakespeareDataset
 from src.dataloader import DataLoader
 
 SHAKESPEARE = Path(__file__).resolve().parent.parent / "dataset" / "raw_data" / "shakespeare.txt"

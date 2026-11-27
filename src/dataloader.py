@@ -1,13 +1,11 @@
 import tiktoken
 import torch
-
-from dataset.shakespeare_dataset import Dataset
-
+from pathlib import Path
 
 # Dataloader that loads data sequentially from a dataset
 class DataLoader:
-    def __init__(self, dataset: Dataset, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True) -> None:
-        self.dataset = dataset
+    def __init__(self, path: Path, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True) -> None:
+        self.path = path
         self.batch_size = batch_size
         self.rank = rank
         self.world_size = world_size
@@ -15,7 +13,7 @@ class DataLoader:
         self.idx = self.rank * self.context_length * self.batch_size  # track where are we in the dataset
         tokenizer = tiktoken.encoding_for_model("gpt2")
         # load and encode data from url
-        self._data = dataset.data()
+        
         self.tokenized_data = tokenizer.encode(self._data)
 
     def next_batch(self):
