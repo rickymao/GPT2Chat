@@ -35,7 +35,7 @@ def train():
     import subprocess
 
     subprocess.run(
-        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--train-path", str(volume_path / "shakespeare" / "train.bin")],
+        ["torchrun", "--standalone", f"--nproc-per-node={NUM_GPU}", "-m", "scripts.train", "--train-dir", str(volume_path / "shakespeare")],
         check=True,
         cwd="/root/project"
     )

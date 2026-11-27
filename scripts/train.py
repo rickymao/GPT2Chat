@@ -19,7 +19,7 @@ volume_path = PurePosixPath("/data")
 @dataclass
 class Hyperparameters:
     steps = 50
-    batch_size = 1
+    batch_size = 16
     context_length = 1024
     weight_decay = 0.1
     base_lr = 6e-4
@@ -70,7 +70,7 @@ def get_param_groups(
     ]
 
 
-def train(config: Hyperparameters, train_path: str):
+def train(config: Hyperparameters, train_dir: str):
     dpp = use_dpp()
     is_dpp = dpp["is_dpp"]
     device = dpp["device"]
@@ -90,7 +90,7 @@ def train(config: Hyperparameters, train_path: str):
 
     torch.set_float32_matmul_precision("high")
     loader = DataLoader(
-        path=train_path,
+        data_dir=train_dir,
         batch_size=config.batch_size,
         context_length=config.context_length,
         rank=rank,
@@ -176,9 +176,9 @@ def train(config: Hyperparameters, train_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--train-path", help="dataset path for training"
+        "--train-dir", help="dataset directory for training"
     )
     args = parser.parse_args()
-    train_path = args.train_path
+    train_dir = args.train_dir
 
-    train(Hyperparameters(), train_path=train_path)
+    train(Hyperparameters(), train_dir=train_dir)

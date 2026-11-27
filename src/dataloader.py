@@ -8,7 +8,7 @@ volume_path = Path("/data")
 
 # Dataloader that loads data sequentially from a dataset
 class DataLoader:
-    def __init__(self, path: str | Path, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True, split: str="train") -> None:
+    def __init__(self, data_dir: str, batch_size: int, context_length: int, rank: int, world_size: int, is_master: bool = True, split: str="train") -> None:
         self.batch_size = batch_size
         self.rank = rank
         self.world_size = world_size
@@ -16,11 +16,13 @@ class DataLoader:
         assert split in ("train", "val")
         self.context_length = context_length
         self.idx = self.rank * self.context_length * self.batch_size  # track where are we in the dataset
-        self.data_dir = Path("./dataset/fineweb_edu")
+        self.data_dir = Path(data_dir)
         shards = os.listdir(self.data_dir)
         assert len(shards) > 0
         self.shards = sorted(f for f in shards if f.endswith(".bin") and split in f)
         self.curr_shard = 0
+        if is_master:
+            print(f"Loaded {len(shards)} data shards")
     def next_batch(self):
         path = self.data_dir / self.shards[self.curr_shard]
         ds = np.memmap(path, dtype=np.uint16, mode="r")        
